@@ -1,0 +1,5 @@
+[search_engine_servers]
+10.0.10.11 node_name=dlaruso cluster_name=bonsai data=/opt/apps/data/elasticsearch tmp_dir=/tmp
+
+[log_indexer_servers]
+10.0.10.11 dir=/opt/logstash conf=/opt/logstash/etc ip=10.0.10.11 elasticsearch_ip=10.0.10.11 tmp_dir=/tmp

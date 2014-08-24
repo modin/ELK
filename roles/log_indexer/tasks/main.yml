@@ -1,0 +1,52 @@
+---
+# Install Logstash dependencies
+- name: "Install Logstash dependencies"
+  apt: pkg={{ item }} state=present update_cache=yes
+  with_items:
+    - 'openjdk-7-jre'
+    - 'openjdk-7-jdk'
+
+- name: "Crear grupo logstash"
+  group: name=logstash state=present
+
+- name: "Crear usuario logstash"
+  user: name=logstash shell=/bin/bash groups=logstash append=yes
+
+# Create Logstash destination
+- name: "Create Logstash destination: {{ logstash.dir }}"
+  file: path={{ dir }} group=logstash owner=logstash mode=0755 state=directory
+
+# Create Logstash destination
+- name: "Create Logstash bin directory: {{ logstash.dir }}/bin"
+  file: path={{ dir }}/bin group=logstash owner=logstash mode=0755 state=directory
+
+# Create Logstash destination
+- name: "Create Logstash etc directory: {{ logstash.dir }}/etc"
+  file: path={{ dir }}/etc group=logstash owner=logstash mode=0755 state=directory
+
+# Crear directorios para patterns
+- name: "Create Logstash directories for http logs"
+  file: path='/opt/logstash/patterns/' group=logstash owner=logstash mode=0755 state=directory
+
+# Instalar Logstash patterns hechas a mano
+- name: "Install logstash new patterns"
+  template: src=extra dest={{ dir }}/patterns/ owner=logstash group=logstash mode=0755
+
+# Install Logstash indexer init script
+- name: "Install Logstash indexer init script"
+  template: src=logstash.j2 dest=/etc/init.d/logstash owner=logstash group=logstash mode=0755
+
+# Install Logstash indexer config
+- name: "Install Logstash indexer config"
+  template: src=logstash_indexer.conf.j2 dest={{ conf }} owner=logstash group=logstash mode=0755
+  notify:
+    - "Restart Logstash indexer"
+
+# Fetch Logstash JAR
+- name: "Fetch Logstash: {{ logstash.url }}/{{ logstash.jar }}"
+  get_url: url='https://download.elasticsearch.org/logstash/logstash/logstash-1.3.2-flatjar.jar' dest={{ dir }}/bin thirsty=yes mode=0440
+  register: get_jar
+
+# Start Logstash indexer
+- name: "Start Logstash indexer"
+  service: name=logstash state=started

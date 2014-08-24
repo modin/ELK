@@ -1,0 +1,5 @@
+COMMONAPACHELOG %{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:timestamp}\] "(?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})" %{NUMBER:response} (?:%{NUMBER:bytes}|-) (?:ResponseTime %{NUMBER:response_time})
+
+COMMONAPACHELOG2 %{IPORHOST:clientip} %{USER:ident} %{USER:auth} \[%{HTTPDATE:timestamp}\] "(?:%{WORD:verb} %{NOTSPACE:request}(?: HTTP/%{NUMBER:httpversion})?|%{DATA:rawrequest})" %{NUMBER:response} (?:%{NUMBER:bytes}|-) "(%{DATA:referral})" "(%{DATA:browser})" (%{NUMBER:response_time})
+
+JBOSS1 %{DATESTAMP:timestamp} %{LOGLEVEL:loglevel}

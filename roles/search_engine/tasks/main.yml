@@ -1,0 +1,53 @@
+---
+# Install Elasticsearch dependencies
+- name: "Install Elasticsearch dependencies"
+  apt: pkg={{ item }} state=present update-cache=yes
+  with_items:
+    - 'openjdk-7-jre'
+    - 'openjdk-7-jdk'
+
+- name: "Crear grupo elasticsearch"
+  group: name=elasticsearch state=present
+
+- name: "Crear usuario elasticsearch"
+  user: name=elasticsearch shell=/bin/bash groups=elasticsearch append=yes
+
+# Create directory for data
+- name: "Create directory for Elasticsearch data"
+  file: path={{ data }} state=directory owner=elasticsearch group=elasticsearch mode=0755
+
+# Fetch Elasticsearch Debian package
+- name: "Fetch Elasticsearch: http://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-0.90.8.deb"
+  get_url: url=http://download.elasticsearch.org/elasticsearch/elasticsearch/elasticsearch-0.90.8.deb dest={{ tmp_dir }} thirsty=yes mode=0440
+  register: elasticsearch_deb
+
+# Install Elasticsearch
+- name: "Install Elasticsearch package: elasticsearch-0.90.8.deb"
+  shell: "dpkg -i -E --force-confnew {{ tmp_dir }}/elasticsearch-0.90.8.deb 2>&1 | grep skipping | wc -l"
+  when: elasticsearch_deb|changed
+
+# Configuracion ES con template
+- name: "Configuro IP, clustername, nodename, dirs, etc."
+  template: src=elasticsearch.yml.j2 dest=/etc/elasticsearch/elasticsearch.yml owner=elasticsearch group=elasticsearch mode=0755
+  notify:
+    - "Restart Elasticsearch"
+
+# Configuro logging.yml
+- name: "Uso archivo logging.yml para configuracion"
+  file: src=logging.yml.j2 path=/etc/elasticsearch/logging.yml owner=elasticsearch group=elasticsearch mode=0755 
+
+# Configuracion ES en init.d
+- name: "Configuro ES en init.d"
+  template: src=elasticsearch.j2 dest=/etc/init.d/elasticsearch owner=root group=root mode=0755
+  notify:
+    - "Restart Elasticsearch"
+
+# Aseguro tener la cantidad suficiente de filedescriptors
+- name: "Aseguro tener la cantidad suficiente de filedescriptors en 65535"
+  lineinfile: "dest=/etc/security/limits.conf state=present regexp='^elasticsearch    hard' insertbefore='# End of file' line='elasticsearch    hard    nofile          65535'"
+  notify:
+    - "Restart Elasticsearch"
+
+# Ensure Elasticsearch is running
+- name: "Ensure Elasticsearch is running"
+  service: name=elasticsearch state=started

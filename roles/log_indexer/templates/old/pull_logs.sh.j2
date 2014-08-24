@@ -1,0 +1,51 @@
+#! /bin/sh
+
+# Declaro variables
+path="/opt/logstash/logs/http/webprodp1"
+server="webprodp1"
+port=3335
+hoy=$(date +'%Y.%m.%d')
+ayer=$(date -d '1 day ago' +'%Y.%m.%d')
+
+# Funciones
+proceso_nuevas_lineas () {
+  # Obtengo nuevas entradas y las proceso con logstash
+  actuales=$(cat $path/access_log.$fecha | wc -l)
+  rsync -acvz --append -e "ssh -i /home/sopweb/.ssh/id_rsa" \
+    "wasusr@$server:/usr/WebSphereNDV7/IBMIHSV7/logs/access_log."$fecha \
+    $path
+  nuevas=$(cat $path/access_log.$fecha | wc -l)
+  cantidad_lineas=$(( $nuevas - $actuales ))
+  echo $cantidad_lineas
+  nc -c "tail -$cantidad_lineas $path/access_log.$fecha" localhost $port
+}
+
+body () {
+  # Observar que si el archivo no existe, es porque cambio el dia y
+  # tengo que procesar el anterior
+  if [ -f $path/access_log.$hoy ]
+  then
+    fecha=$hoy
+    proceso_nuevas_lineas
+  else
+    fecha=$ayer
+    proceso_nuevas_lineas
+    touch $path/access_log.$hoy
+    fecha=$hoy
+    proceso_nuevas_lineas
+  fi
+}
+
+
+
+
+# Observar que no puedo correr en paralelo, porque estaria duplicando lineas
+# Que otro proceso igual no este corriendo
+set -e
+(
+  flock -n 9
+    body
+) 9>$path/lock.webprodp1
+
+# Observar que para correr logstash debe estar corriendo y escuchando en el
+# puerto correcto

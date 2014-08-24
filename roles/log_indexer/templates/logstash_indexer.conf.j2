@@ -1,0 +1,137 @@
+input {
+  stdin {
+    type => "human"
+  }
+  tcp {
+   type => "haproxy"
+   port => 3336
+   add_field => [ "server", "vmlx-haproxy2-prod" ]
+  }
+  tcp {
+    type => "http"
+    port => 3333
+    add_field => [ "server", "webadmp" ]
+  }
+  tcp {
+    type => "http"
+    port => 3334
+    add_field => [ "server", "huanta" ]
+  }
+  tcp {
+    type => "http"
+    port => 3335
+    add_field => [ "server", "webprodp1" ]
+  }
+  tcp {
+    type => "http"
+    port => 3337
+    add_field => [ "server", "webprodp3" ]
+  }
+  tcp {
+    type => "http"
+    port => 3338
+    add_field => [ "server", "webprodp2" ]
+  }
+
+  tcp {
+    type => "http"
+    port => 3340
+    add_field => [ "server", "vmlx-lamp-prod" ]
+  }
+  tcp {
+    type => "prueba"
+    port => 3341
+    add_field => [ "server", "prueba" ]
+  }
+  tcp {
+    type => "http_gaston"
+    port => 3342
+    add_field => [ "server", "vmlx-apachen2-prod" ]
+  }
+}
+
+filter {
+  if [type] == "http" {
+    grok {
+      patterns_dir => "/opt/logstash/patterns"
+      match => [message, "%{COMMONAPACHELOG}"]
+    }
+    date {
+      match => [ "timestamp", "dd/MMM/YYYY:HH:mm:ss Z" ]
+    }
+    mutate {
+      convert => [ "bytes", "integer" ]
+    }
+    mutate {
+      convert => [ "response_time", "integer" ]
+    }
+    mutate {
+      convert => [ "response", "integer" ]
+    } 
+  } else if [type] == "haproxy" {
+    grok {
+      patterns_dir => "/opt/logstash/patterns"
+      match => [message, "%{HAPROXYHTTP}"]
+    }
+    date {
+    match => [ "accept_date", "dd/MMM/YYYY:HH:mm:ss.SSS" ]
+    }
+  } else if [type] == "prueba" {
+    grok {
+      patterns_dir => "/opt/logstash/patterns"
+      match => [message, "%{JBOSS1}"]
+     } 
+    date {
+      match => [ "timestamp", "YY-MM-dd HH:mm:ss,SSS" ]
+    }
+    multiline {
+    #  type => "somefiletype"
+      pattern => "^\D"
+      what => "previous"
+    }
+    multiline {
+      pattern => "^$"
+      what => "previous"
+    }
+    multiline {
+      pattern => "^\n"
+      what => "previous"
+    }
+ 
+
+  } else if [type] == "http_gaston" {
+          grok {
+            patterns_dir => "/opt/logstash/patterns"
+            match => [message, "%{COMMONAPACHELOG2}"]
+          }
+          date {
+            match => [ "timestamp", "dd/MMM/YYYY:HH:mm:ss Z" ]
+          }
+  }
+}
+
+#filter {
+#  grok {
+#    patterns_dir => "/opt/logstash/patterns"
+#    pattern => "%{HAPROXYHTTP}"
+# }
+# date {
+#   type => "haproxy"
+#   match => [ "accept_date", "dd/MMM/YYYY:HH:mm:ss.SSS" ]
+# }
+#}
+
+output {
+  # debug deprecated 
+  stdout { 
+    debug => true 
+    debug_format => "json"
+  }
+  
+  elasticsearch {
+    cluster => "bonsai"
+    bind_host => "10.34.140.206"
+    host => "10.34.140.206"
+    embedded => false
+  }
+}

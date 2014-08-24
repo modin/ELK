@@ -1,0 +1,3 @@
+---
+- include: search_engine_server.yml
+- include: log_indexer_server.yml

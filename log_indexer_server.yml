@@ -1,0 +1,6 @@
+- hosts: log_indexer_servers
+  sudo: yes
+  roles:
+  - log_indexer
+  handlers:
+    - include: handlers/logstash.yml

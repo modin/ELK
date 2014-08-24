@@ -1,0 +1,83 @@
+input {
+  stdin {
+    type => "human"
+  }
+  file {
+    type => "http"
+    path => "/opt/logstash/logs/http/webadmp/access_log.*"
+    add_field => [ "server", "webadmp" ]
+  }
+  file {
+    type => "http"
+    path => "/opt/logstash/logs/http/webprodp1/access_log.*"
+    add_field => [ "server", "webprodp1" ]
+  }
+  file {
+    type => "http"
+    path => "/opt/logstash/logs/http/webprodp2/access_log.*"
+    add_field => [ "server", "webprodp2" ]
+  }
+  tcp {
+   type => "haproxy"
+   port => 3336
+   add_field => [ "server", "vmlx-haproxy2-prod" ]
+  }
+  tcp {
+    type => "http"
+    port => 3333
+    add_field => [ "server", "webadmp" ]
+  }
+  tcp {
+    type => "http"
+    port => 3334
+    add_field => [ "server", "melo" ]
+  }
+  tcp {
+    type => "http"
+    port => 3335
+    add_field => [ "server", "webprodp1" ]
+  }
+}
+
+filter {
+  if [type] == "http" {
+    grok {
+      patterns_dir => "/opt/logstash/patterns"
+      match => [message, "%{COMMONAPACHELOG}"]
+    }
+    date {
+      match => [ "timestamp", "dd/MMM/YYYY:HH:mm:ss Z" ]
+    }
+  } else if [type] == "haproxy" {
+    grok {
+      patterns_dir => "{{ logstash.dir }}/patterns"
+      match => [message, "%{HAPROXYHTTP}"]
+    }
+    date {
+    match => [ "accept_date", "dd/MMM/YYYY:HH:mm:ss.SSS" ]
+    }
+  } 
+}
+
+#filter {
+#  grok {
+#    patterns_dir => "{{ logstash.dir }}/patterns"
+#    pattern => "%{HAPROXYHTTP}"
+# }
+# date {
+#   type => "haproxy"
+#   match => [ "accept_date", "dd/MMM/YYYY:HH:mm:ss.SSS" ]
+# }
+#}
+
+output {
+  # debug deprecated 
+  #stdout { debug => true debug_format => "json"}
+  
+  elasticsearch {
+    #cluster => "logstash"
+    bind_host => "{{ with_indexer_ip }}"
+    host => "{{ with_elasticsearch_ip }}"
+    embedded => false
+  }
+}
